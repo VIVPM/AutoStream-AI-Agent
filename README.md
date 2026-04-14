@@ -37,6 +37,38 @@ A conversational AI agent for **AutoStream**, a SaaS platform that provides auto
 
 5. Open `http://localhost:8501` in your browser.
 
+## Architecture Diagram
+
+```mermaid
+flowchart TD
+    User([User]) -->|message| UI[Streamlit UI\napp.py]
+    UI -->|run_agent| AG[LangGraph Agent]
+
+    subgraph AG[LangGraph Agent — agent.py]
+        direction TB
+        START([START]) --> CI[classify_intent\nGemini LLM]
+        CI -->|greeting| HG[handle_greeting\nGemini LLM]
+        CI -->|inquiry| HI[handle_inquiry\nGemini LLM + RAG]
+        CI -->|high_intent| HHI[handle_high_intent\nGemini LLM]
+        HG --> ENDN([END])
+        HI --> ENDN
+        HHI --> ENDN
+    end
+
+    HI -->|semantic search| RAG[RAG Pipeline\nrag.py]
+    RAG -->|query| VDB[(ChromaDB\nVector Store)]
+    VDB -->|top-k chunks| RAG
+    RAG -->|context| HI
+
+    HHI -->|name · email · platform collected| TOOL[mock_lead_capture\ntools.py]
+
+    AG -->|AgentState| MEM[(MemorySaver\nthread checkpoint)]
+    MEM -->|restore state| AG
+
+    AG -->|response| UI
+    UI -->|reply| User
+```
+
 ## Architecture Explanation
 
 This project uses **LangGraph** as the orchestration framework for building a stateful, multi-step conversational agent. LangGraph was chosen over AutoGen because it provides explicit control over state transitions through a directed graph model, which maps naturally to the intent-based conversation flow required (greeting → inquiry → high-intent → lead capture). Unlike AutoGen's multi-agent paradigm, LangGraph keeps the architecture simple with a single agent and clearly defined nodes for each stage of the workflow.
