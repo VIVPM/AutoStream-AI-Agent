@@ -5,32 +5,39 @@ A conversational AI agent for **AutoStream**, a SaaS platform that provides auto
 ## How to Run Locally
 
 ### Prerequisites
+
 - Python 3.9+
 - Google API Key (for Gemini LLM and embeddings)
 
 ### Setup
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/your-username/assignment-servicehive.git
    cd assignment-servicehive
    ```
 
 2. **Install dependencies**
+
    ```bash
    pip install -r requirements.txt
    ```
 
 3. **Set up environment variable**
+
    ```bash
    export GOOGLE_API_KEY="your_google_api_key_here"
    ```
+
    On Windows:
+
    ```bash
    set GOOGLE_API_KEY=your_google_api_key_here
    ```
 
 4. **Run the application**
+
    ```bash
    streamlit run app.py
    ```
@@ -85,14 +92,6 @@ greet  inq  high_intent
 
 **MemorySaver** — LangGraph's built-in checkpointer persists `AgentState` (messages + intent + lead_info) across turns using a `thread_id`, so no external database is needed.
 
-## Architecture Explanation
-
-This project uses **LangGraph** as the orchestration framework for building a stateful, multi-step conversational agent. LangGraph was chosen over AutoGen because it provides explicit control over state transitions through a directed graph model, which maps naturally to the intent-based conversation flow required (greeting → inquiry → high-intent → lead capture). Unlike AutoGen's multi-agent paradigm, LangGraph keeps the architecture simple with a single agent and clearly defined nodes for each stage of the workflow.
-
-**State management** is handled through LangGraph's built-in `MemorySaver` checkpointer, which persists conversation state across multiple turns using a thread-based approach. The `AgentState` TypedDict tracks three key pieces of information: the full message history (for conversational context), the classified intent (greeting, inquiry, or high_intent), and the lead information dictionary (name, email, platform). This state flows through the graph — starting at an intent classification node, routing conditionally to the appropriate handler, and maintaining lead collection progress across turns. The checkpointer ensures memory persists across 5–6+ conversation turns without any external database.
-
-**RAG** is implemented using ChromaDB as the vector store with Google's `gemini-embedding-001` model (384 dimensions). The knowledge base is stored in a local JSON file and embedded into ChromaDB at startup, enabling semantic search for accurate product and pricing responses.
-
 ## WhatsApp Deployment via Webhooks
 
 To integrate this agent with WhatsApp, the following webhook-based architecture can be used:
@@ -130,11 +129,11 @@ This approach keeps the core agent logic unchanged — only the I/O layer (Strea
 
 ## Evaluation Criteria Coverage
 
-| Criteria | Implementation |
-|----------|---------------|
-| Intent Detection | LLM-based classification into greeting/inquiry/high_intent |
-| RAG | ChromaDB + gemini-embedding-001 (384d) over local JSON knowledge base |
-| State Management | LangGraph MemorySaver with thread-based checkpointing |
-| Tool Calling | mock_lead_capture called only after collecting all 3 fields |
-| Code Clarity | Modular design — separate files for agent, RAG, tools, and UI |
-| Deployability | Streamlit UI + WhatsApp webhook architecture documented |
+| Criteria         | Implementation                                                        |
+| ---------------- | --------------------------------------------------------------------- |
+| Intent Detection | LLM-based classification into greeting/inquiry/high_intent            |
+| RAG              | ChromaDB + gemini-embedding-001 (384d) over local JSON knowledge base |
+| State Management | LangGraph MemorySaver with thread-based checkpointing                 |
+| Tool Calling     | mock_lead_capture called only after collecting all 3 fields           |
+| Code Clarity     | Modular design — separate files for agent, RAG, tools, and UI         |
+| Deployability    | Streamlit UI + WhatsApp webhook architecture documented               |
