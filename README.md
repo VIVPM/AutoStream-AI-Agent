@@ -37,37 +37,53 @@ A conversational AI agent for **AutoStream**, a SaaS platform that provides auto
 
 5. Open `http://localhost:8501` in your browser.
 
-## Architecture Diagram
+## Architecture
 
-```mermaid
-flowchart TD
-    User([User]) -->|message| UI[Streamlit UI\napp.py]
-    UI -->|run_agent| AG[LangGraph Agent]
-
-    subgraph AG[LangGraph Agent — agent.py]
-        direction TB
-        START([START]) --> CI[classify_intent\nGemini LLM]
-        CI -->|greeting| HG[handle_greeting\nGemini LLM]
-        CI -->|inquiry| HI[handle_inquiry\nGemini LLM + RAG]
-        CI -->|high_intent| HHI[handle_high_intent\nGemini LLM]
-        HG --> ENDN([END])
-        HI --> ENDN
-        HHI --> ENDN
-    end
-
-    HI -->|semantic search| RAG[RAG Pipeline\nrag.py]
-    RAG -->|query| VDB[(ChromaDB\nVector Store)]
-    VDB -->|top-k chunks| RAG
-    RAG -->|context| HI
-
-    HHI -->|name · email · platform collected| TOOL[mock_lead_capture\ntools.py]
-
-    AG -->|AgentState| MEM[(MemorySaver\nthread checkpoint)]
-    MEM -->|restore state| AG
-
-    AG -->|response| UI
-    UI -->|reply| User
 ```
+User Input (message)
+        |
+        v
+  Streamlit UI (app.py)
+        |
+        v
+  classify_intent
+  (Gemini LLM)
+        |
+   intent?
+   /    |    \
+greet  inq  high_intent
+  |     |        |
+  |     |        v
+  |     |   Collect lead info
+  |     |   (name → email → platform)
+  |     |        |
+  |   RAG        v
+  |  lookup  mock_lead_capture
+  |   (ChromaDB + Gemini embeddings)
+  |     |        |
+   \    |       /
+    v   v      v
+   LangGraph END
+   (MemorySaver checkpoint)
+        |
+        v
+  Streamlit UI (reply)
+        |
+        v
+      User
+```
+
+**classify_intent** — Classifies every message into `greeting`, `inquiry`, or `high_intent` using Gemini 2.5 Flash at `temperature=0.0`.
+
+**handle_greeting** — Generates a warm welcome response. No RAG needed.
+
+**handle_inquiry** — Retrieves the top-k relevant chunks from ChromaDB (via `retrieve_context`) and passes them as context to Gemini before responding.
+
+**handle_high_intent** — Runs a stateful one-field-at-a-time collection loop (name → email → platform). Calls `mock_lead_capture` only after all three fields are collected.
+
+**RAG Pipeline** — `knowledge_base.json` is embedded at startup using `gemini-embedding-001` (384d) into a local ChromaDB store. Semantic search retrieves the most relevant product/pricing context on demand.
+
+**MemorySaver** — LangGraph's built-in checkpointer persists `AgentState` (messages + intent + lead_info) across turns using a `thread_id`, so no external database is needed.
 
 ## Architecture Explanation
 
